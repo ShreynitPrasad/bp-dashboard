@@ -656,7 +656,7 @@ canvas{display:block;width:100%!important}
 <div id="toast"></div>
 
 <script>
-const SP_FILE_URL='https://apraamcosonline.sharepoint.com/:x:/r/sites/DigiOps/Shared%20Documents/Automation%20Production%20Solutions/Dashboard/Input%20File/BP%20-%20Interrim%20Dash%20Board.xlsx?d=w39ca4e544f224265b6ef42b96ebd7368&csf=1&web=1&e=35k1Oj';
+const SP_FILE_URL='https://apraamcosonline.sharepoint.com/:x:/r/sites/DigiOps/Shared%20Documents/Automation%20Production%20Solutions/Dashboard/Input%20File/BP%20-%20Interrim%20Dash%20Board.xlsx?d=w39ca4e544f224265b6ef42b96ebd7368&csf=1&web=1&e=nPHM4x&download=1';
 
 let STATE={
   raw:null,
@@ -722,7 +722,11 @@ function getGlobalFilters(){
 function updateFilterBadges(){
   const GF=getGlobalFilters();
   const ms=STATE.raw?STATE.raw.monthlySheets:[];
-  const dateActive=ms.length&&(GF.fromMonth!==ms[0]||GF.toMonth!==ms[ms.length-1]);
+  // Use numeric keys so cross-year ranges (e.g. JUL25→JAN26) are detected correctly
+  const dateActive=ms.length&&(
+    (GF.fromMonth&&sheetKey(GF.fromMonth)!==sheetKey(ms[0]))||
+    (GF.toMonth&&sheetKey(GF.toMonth)!==sheetKey(ms[ms.length-1]))
+  );
   const deptActive=GF.depts.length>0,queueActive=GF.queues.length>0;
   const db=$('date-filter-badge'),deb=$('dept-filter-badge'),qb=$('queue-filter-badge');
   if(db)db.style.display=dateActive?'inline-flex':'none';
@@ -739,6 +743,11 @@ function updateFilterBadges(){
 }
 
 function applyGlobalFilters(){
+  // Prevent "To" being set earlier than "From"
+  const fromSel=$('from-month'),toSel=$('to-month');
+  if(fromSel&&toSel&&sheetKey(toSel.value)<sheetKey(fromSel.value)){
+    toSel.value=fromSel.value;
+  }
   updateFilterBadges();
   if(!STATE.raw)return;
   const D=deriveFiltered();
@@ -766,16 +775,32 @@ function resetGlobalFilters(){
 }
 
 // Returns a filtered version of raw data respecting global filters
+// Convert sheet name e.g. "JUL25" → numeric key 25*12+6=306
+// Safe for cross-year comparisons like JUL25 → JAN26
+function sheetKey(n){
+  if(!n||n.length<5)return 0;
+  const mon=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'].indexOf(n.slice(0,3).toUpperCase());
+  const yr=parseInt(n.slice(3),10)||0;
+  return yr*12+(mon>=0?mon:0);
+}
+
 function deriveFiltered(){
   if(!STATE.raw)return null;
   const GF=getGlobalFilters();
   const raw=STATE.raw;
 
-  // Filter monthly/quarterly sheets by date range
-  const filtMonthly=GF.fromMonth&&GF.toMonth
-    ?raw.monthly.filter(r=>r.sheetName>=GF.fromMonth&&r.sheetName<=GF.toMonth)
+  // Use numeric keys — string comparison breaks across year boundaries (e.g. JUL25 vs JAN26)
+  const fromKey=GF.fromMonth?sheetKey(GF.fromMonth):null;
+  const toKey=GF.toMonth?sheetKey(GF.toMonth):null;
+  const inRange=s=>fromKey===null||toKey===null||(sheetKey(s)>=fromKey&&sheetKey(s)<=toKey);
+
+  // Filter monthly sheets by date range
+  const filtMonthly=(fromKey!==null&&toKey!==null)
+    ?raw.monthly.filter(r=>inRange(r.sheetName))
     :raw.monthly;
-  const filtQuarterly=raw.quarterly; // quarterly not date-filtered (different key format)
+
+  // Quarterly uses a different name format — not date-range filtered
+  const filtQuarterly=raw.quarterly;
 
   // Filter queues by dept/queue selection
   const filtQueues=raw.queues.filter(q=>{
@@ -784,20 +809,26 @@ function deriveFiltered(){
     return true;
   });
 
-  // Filter queue history
+  // When only the date range is active (no dept/queue filter), rebuild the queue
+  // snapshot from the most recent month in the filtered range so KPIs stay accurate
+  let snapshotQueues=filtQueues;
+  if(!GF.depts.length&&!GF.queues.length&&filtMonthly.length){
+    const lastSheet=filtMonthly[filtMonthly.length-1].sheetName;
+    const wb=STATE._wb;
+    if(wb&&wb.Sheets[lastSheet])snapshotQueues=getQueueRows(wb.Sheets[lastSheet]);
+  }
+
+  // Filter queue history by date range and dept/queue selection
   const filtQueueHistory={};
   Object.entries(raw.queueHistory||{}).forEach(([name,hist])=>{
-    const q=filtQueues.find(fq=>fq.name===name)||raw.queues.find(rq=>rq.name===name);
+    const q=raw.queues.find(rq=>rq.name===name);
     if(GF.depts.length&&q&&!GF.depts.includes(q.dept||'Unassigned'))return;
     if(GF.queues.length&&!GF.queues.includes(name))return;
-    const filtHist=GF.fromMonth&&GF.toMonth
-      ?hist.filter(h=>h.sheetName>=GF.fromMonth&&h.sheetName<=GF.toMonth)
-      :hist;
+    const filtHist=(fromKey!==null&&toKey!==null)?hist.filter(h=>inRange(h.sheetName)):hist;
     if(filtHist.length)filtQueueHistory[name]=filtHist;
   });
 
-  // Reconstruct filtered raw
-  const filtRaw={...raw,monthly:filtMonthly,quarterly:filtQuarterly,queues:filtQueues,queueHistory:filtQueueHistory};
+  const filtRaw={...raw,monthly:filtMonthly,quarterly:filtQuarterly,queues:snapshotQueues,queueHistory:filtQueueHistory};
   return derive(filtRaw,STATE.assumptions);
 }
 
