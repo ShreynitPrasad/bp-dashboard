@@ -373,7 +373,7 @@ canvas{display:block;width:100%!important}
             <div id="fte-latest-sub" style="font-size:10px;color:var(--w3);margin-top:2px">FTE equivalent</div>
           </div>
           <div class="fte-metric"><span class="fte-metric-key">YTD Total</span><span class="fte-metric-val" id="fte-ytd-val">—</span></div>
-          <div class="fte-metric"><span class="fte-metric-key">Annualised</span><span class="fte-metric-val" id="fte-ann-val">—</span></div>
+          <div class="fte-metric"><span class="fte-metric-key" id="fte-ann-key" title="Projected annual run rate based on average monthly hours saved. May be misleading when only 1 month is selected.">Proj. Run Rate</span><span class="fte-metric-val" id="fte-ann-val">—</span></div>
           <div class="fte-metric"><span class="fte-metric-key">YTD Hrs</span><span class="fte-metric-val" id="fte-hrs-val">—</span></div>
           <div class="fte-metric"><span class="fte-metric-key">YTD Cost</span><span class="fte-metric-val" id="fte-cost-val" style="color:var(--g)">—</span></div>
         </div>
@@ -520,6 +520,9 @@ canvas{display:block;width:100%!important}
           <div id="fin-filter-summary" style="margin-left:auto;font-size:10px;color:var(--w3);font-family:var(--mono)"></div>
         </div>
         <div class="stat-grid g4" id="fin-kpis" style="margin-bottom:14px"></div>
+        <div id="fin-projection-banner" style="display:none;background:#f59e0b18;border:1px solid #f59e0b40;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--y);display:none">
+          <strong>⚠ Projected Run Rate Warning</strong> — The "Projected Annual Cost" figure is based on <span id="fin-projection-months"></span>. When fewer than 3 months are selected, this projection may significantly overstate the annual value. Use this figure as an indicative run rate only, not as an actual YTD achievement.
+        </div>
 
         <!-- SUMMARY VIEW -->
         <div id="fin-view-summary">
@@ -536,7 +539,7 @@ canvas{display:block;width:100%!important}
             <div class="tbl-wrap"><table><thead><tr>
               <th class="sortable" data-col="0" data-tbody="fin-body">Period</th>
               <th class="sortable td-r" data-col="1" data-tbody="fin-body">Hrs Saved</th>
-              <th class="sortable td-r" data-col="2" data-tbody="fin-body">Days Saved</th>
+              <th class="sortable td-r" data-col="2" data-tbody="fin-body">Working Days</th>
               <th class="sortable td-r" data-col="3" data-tbody="fin-body">FTE Equiv.</th>
               <th class="sortable td-r" data-col="4" data-tbody="fin-body">Cost Avoidance</th>
               <th class="sortable td-r" data-col="5" data-tbody="fin-body">Cumulative Cost</th>
@@ -565,7 +568,7 @@ canvas{display:block;width:100%!important}
               <th class="sortable" data-col="0" data-tbody="queue-fin-body">Queue</th>
               <th class="sortable" data-col="1" data-tbody="queue-fin-body">Department</th>
               <th class="sortable td-r" data-col="2" data-tbody="queue-fin-body">Hrs Saved</th>
-              <th class="sortable td-r" data-col="3" data-tbody="queue-fin-body">Days Saved</th>
+              <th class="sortable td-r" data-col="3" data-tbody="queue-fin-body">Working Days</th>
               <th class="sortable td-r" data-col="4" data-tbody="queue-fin-body">FTE Equiv.</th>
               <th class="sortable td-r" data-col="5" data-tbody="queue-fin-body">Cost Avoidance</th>
               <th class="td-r">% of Total</th>
@@ -586,7 +589,7 @@ canvas{display:block;width:100%!important}
               <th class="sortable" data-col="0" data-tbody="dept-fin-body">Department</th>
               <th class="sortable td-r" data-col="1" data-tbody="dept-fin-body">Queues</th>
               <th class="sortable td-r" data-col="2" data-tbody="dept-fin-body">Hrs Saved</th>
-              <th class="sortable td-r" data-col="3" data-tbody="dept-fin-body">Days Saved</th>
+              <th class="sortable td-r" data-col="3" data-tbody="dept-fin-body">Working Days</th>
               <th class="sortable td-r" data-col="4" data-tbody="dept-fin-body">FTE Equiv.</th>
               <th class="sortable td-r" data-col="5" data-tbody="dept-fin-body">Cost Avoidance</th>
               <th class="td-r">% of Total</th>
@@ -1037,29 +1040,37 @@ function renderFTEWidget(D){
   $('fte-latest-val').textContent=(D.latestFTE||0).toFixed(2);
   $('fte-latest-sub').textContent=D.latest?`FTE · ${D.latest.period}`:'FTE equivalent';
   $('fte-ytd-val').textContent=D.mFTE.toFixed(2)+' FTE';
+  const annMonths=D.mActive?D.mActive.length:0;
+  const annLabel=annMonths<=1?'⚠ Proj. ('+annMonths+'mo)':annMonths<6?'Proj. ('+annMonths+'mo avg)':'Proj. Run Rate';
   $('fte-ann-val').textContent=D.mFTEann.toFixed(2)+' FTE/yr';
+  const annEl=$('fte-ann-key');if(annEl)annEl.textContent=annLabel;
   $('fte-hrs-val').textContent=full(D.mHrs)+' hrs';
   $('fte-cost-val').textContent=aud(D.mCost);
 }
 
 // ── OVERVIEW ──
 function renderOverview(D){
+  const A=STATE.assumptions;
   $('overview-kpis').innerHTML=[
     {label:'Processes Active',value:STATE.raw?STATE.raw.queues.filter(q=>q.completed>0).length:'—',sub:'Queues completed > 0',col:'var(--accent)'},
     {label:'Latest Month Txns',value:D.latest?fmt(D.latest.completed):'—',sub:D.latest?D.latest.period:'No data',col:'var(--accent)',d:delta(D.deltaComp,true,v=>Math.round(v).toLocaleString())},
     {label:'Latest Exc. Rate',value:D.latest?pct(D.latest.er):'—',sub:D.latest?D.latest.period:'',col:D.latest&&D.latest.er>.05?'var(--r)':'var(--g)',d:delta(D.deltaER,false,v=>(v*100).toFixed(2)+'%')},
     {label:'Latest FTE Saved',value:D.latestFTE?D.latestFTE.toFixed(2):'—',sub:D.latest?D.latest.period+' · '+full(D.latest.hrsSaved)+' hrs':'',col:'var(--g)',d:delta(D.deltaFTE,true,v=>v.toFixed(3))},
   ].map(k=>`<div class="stat-card" style="--accent-col:${k.col}"><div class="stat-label">${k.label}</div><div class="stat-value">${k.value}</div><div class="stat-sub">${k.sub}</div>${k.d||''}</div>`).join('');
+  const nMo=D.mActive?D.mActive.length:0;
+  const pLbl=nMo===0?'Period':nMo===1?D.mActive[0].period:nMo<=11?(nMo+'-month period'):'Full Year (YTD)';
+  const projWarn=nMo===1?' ⚠ 1 month only':nMo<3?' ⚠ '+nMo+' months avg':' (projected annual)';
   $('financial-summary').innerHTML=[
-    ['Monthly YTD Hours Saved',full(D.mHrs)+' hrs',D.mHrs>0],
-    ['Monthly YTD Days Saved',full(D.mDays)+' days',D.mDays>0],
-    ['Monthly YTD FTE Equiv.',D.mFTE.toFixed(2)+' FTEs',D.mFTE>0],
-    ['Monthly FTE (Annualised)',D.mFTEann.toFixed(2)+' FTEs',D.mFTEann>0],
-    ['Monthly Cost Avoidance',aud(D.mCost),D.mCost>0],
+    [pLbl+' Hours Saved',full(D.mHrs)+' hrs',D.mHrs>0],
+    [pLbl+' Working Days Saved',full(D.mDays)+' days  ('+full(D.mHrs)+' hrs ÷ '+A.hrsPerDay+')',D.mDays>0],
+    [pLbl+' FTE Equivalent',D.mFTE.toFixed(2)+' FTEs',D.mFTE>0],
+    ['FTE Run Rate'+projWarn,D.mFTEann.toFixed(2)+' FTEs/yr',D.mFTEann>0],
+    [pLbl+' Cost Avoidance',aud(D.mCost),D.mCost>0],
+    ['Cost Run Rate'+projWarn,aud(D.mCostAnn),D.mCostAnn>0],
     ['Quarterly Hours Saved',full(D.qHrs)+' hrs',D.qHrs>0],
     ['Quarterly FTE Equiv.',D.qFTE.toFixed(2)+' FTEs',D.qFTE>0],
     ['Quarterly Cost Avoidance',aud(D.qCost),D.qCost>0],
-  ].filter(r=>r[2]).map(([k,v])=>`<div class="metric-row"><div class="metric-key">${k}</div><div class="metric-val">${v}</div></div>`).join('');
+  ].filter(r=>r[2]).map(([k,v])=>`<div class="metric-row"><div class="metric-key" style="color:${k.includes('⚠')?'var(--y)':'var(--w2)'}">${k}</div><div class="metric-val">${v}</div></div>`).join('');
   const top5=D.qqc.filter(q=>q.er>0).slice(0,5);
   $('overview-hotspots').innerHTML=top5.length?top5.map(q=>`<div class="metric-row"><div><div class="metric-key" style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${q.name}</div><div class="metric-key-sub">${full(q.total)} total</div></div><div style="text-align:right"><div style="font-size:13px;font-weight:700;font-family:var(--mono);color:${ragColor(q.er)}">${pct(q.er)}</div><span class="pill ${ragClass(q.er)}">${ragLabel(q.er)}</span></div></div>`).join(''):'<div class="empty"><div class="empty-icon">✅</div>No exception hotspots</div>';
   $('rag-body').innerHTML=[
@@ -1072,20 +1083,22 @@ function renderOverview(D){
 
 // ── MONTHLY / QUARTERLY ──
 function renderMonthly(D){
+  const A=STATE.assumptions;
   $('monthly-kpis').innerHTML=[
     {l:'Total Completed',v:fmt(D.mComp),s:D.mc.filter(r=>r.total>0).length+' active months',c:'var(--accent)'},
     {l:'Biz Exceptions',v:full(D.mBiz),s:pct(D.mBiz/(D.mTot||1))+' of total',c:'var(--y)'},
     {l:'Sys Exceptions',v:full(D.mSys),s:pct(D.mSys/(D.mTot||1))+' of total',c:'var(--r)'},
-    {l:'Hours Saved',v:fmt(D.mHrs),s:full(D.mDays)+' workdays',c:'var(--g)'},
+    {l:'Hours Saved',v:fmt(D.mHrs),s:(()=>{const n=D.mActive?D.mActive.length:0;return full(D.mDays)+' working days'+(n===1?' ('+D.mActive[0].period+' only)':' · '+n+' months')})(),c:'var(--g)'},
   ].map(k=>`<div class="stat-card" style="--accent-col:${k.c}"><div class="stat-label">${k.l}</div><div class="stat-value">${k.v}</div><div class="stat-sub">${k.s}</div></div>`).join('');
   $('monthly-body').innerHTML=D.mc.map((r,i)=>`<tr style="background:${i%2?'transparent':'var(--s2)'}"><td style="color:var(--w);font-weight:500">${r.period}</td><td class="td-r" style="color:var(--accent)">${r.total>0?full(r.completed):'—'}</td><td class="td-r" style="color:${r.bizEx>0?'var(--y)':'var(--w3)'}">${r.total>0?full(r.bizEx):'—'}</td><td class="td-r" style="color:${r.sysEx>0?'var(--r)':'var(--w3)'}">${r.total>0?full(r.sysEx):'—'}</td><td class="td-r">${r.total>0?full(r.total):'—'}</td><td class="td-r"><span style="color:${ragColor(r.er)};font-weight:600">${r.total>0?pct(r.er):'—'}</span></td><td class="td-r">${r.total>0?`<div style="display:flex;align-items:center;gap:6px;justify-content:flex-end"><div class="prog" style="width:70px"><div class="prog-fill" style="width:${r.sr*100}%;background:${r.sr>.98?'var(--g)':'var(--accent)'}"></div></div><span style="color:var(--accent);font-weight:600">${pct(r.sr)}</span></div>`:'—'}</td><td class="td-r" style="color:var(--w2)">${r.hrsSaved>0?full(r.hrsSaved):'—'}</td></tr>`).join('');
 }
 function renderQuarterly(D){
+  const A=STATE.assumptions;
   $('quarterly-kpis').innerHTML=[
     {l:'Total Completed',v:fmt(D.qComp),s:D.qc.filter(r=>r.total>0).length+' active periods',c:'var(--b)'},
     {l:'Biz Exceptions',v:full(D.qBiz),s:pct(D.qBiz/(D.qTot||1))+' of total',c:'var(--y)'},
     {l:'Sys Exceptions',v:full(D.qSys),s:pct(D.qSys/(D.qTot||1))+' of total',c:'var(--r)'},
-    {l:'Hours Saved',v:fmt(D.qHrs),s:full(D.qDays)+' workdays',c:'var(--g)'},
+    {l:'Hours Saved',v:fmt(D.qHrs),s:(()=>{const n=D.qActive?D.qActive.length:0;return full(D.qDays)+' working days'+(n===1?' ('+D.qActive[0].period+' only)':' · '+n+' periods')})(),c:'var(--g)'},
   ].map(k=>`<div class="stat-card" style="--accent-col:${k.c}"><div class="stat-label">${k.l}</div><div class="stat-value">${k.v}</div><div class="stat-sub">${k.s}</div></div>`).join('');
   $('quarterly-body').innerHTML=D.qc.map((r,i)=>`<tr style="background:${i%2?'transparent':'var(--s2)'}"><td style="color:var(--w);font-weight:500">${r.period}</td><td class="td-r" style="color:var(--b)">${r.total>0?full(r.completed):'—'}</td><td class="td-r" style="color:${r.bizEx>0?'var(--y)':'var(--w3)'}">${r.total>0?full(r.bizEx):'—'}</td><td class="td-r" style="color:${r.sysEx>0?'var(--r)':'var(--w3)'}">${r.total>0?full(r.sysEx):'—'}</td><td class="td-r">${r.total>0?full(r.total):'—'}</td><td class="td-r"><span style="color:${ragColor(r.er)};font-weight:600">${r.total>0?pct(r.er):'—'}</span></td><td class="td-r">${r.total>0?`<div style="display:flex;align-items:center;gap:6px;justify-content:flex-end"><div class="prog" style="width:70px"><div class="prog-fill" style="width:${r.sr*100}%;background:${r.sr>.98?'var(--g)':'var(--b)'}"></div></div><span style="color:var(--b);font-weight:600">${pct(r.sr)}</span></div>`:'—'}</td><td class="td-r" style="color:var(--w2)">${r.hrsSaved>0?full(r.hrsSaved):'—'}</td></tr>`).join('');
 }
@@ -1160,11 +1173,23 @@ function renderFinancial(D){
   const filtHrs=rows.reduce((s,r)=>s+r.hrsSaved,0);
   const filtFTE=filtHrs/A.fteHrsPerYear,filtCost=filtFTE*A.avgSalaryAUD*A.overheadMult,ap=rows.length;
   if($('fin-filter-summary'))$('fin-filter-summary').textContent=`${ap} period${ap!==1?'s':''} · ${src}`;
+  // Show projection warning banner when fewer than 3 monthly periods selected
+  const banner=$('fin-projection-banner');
+  const monthCount=D.mActive?D.mActive.length:0;
+  if(banner){
+    if(monthCount<3&&monthCount>0){
+      banner.style.display='block';
+      const mLabel=$('fin-projection-months');
+      if(mLabel)mLabel.textContent=monthCount===1?'only 1 month of data':monthCount+' months of data';
+    } else {
+      banner.style.display='none';
+    }
+  }
   $('fin-kpis').innerHTML=[
     {l:'Total Cost Avoidance',v:aud(filtCost),s:src==='both'?'Monthly + Quarterly':src,c:'var(--y)'},
     {l:'FTE Equivalent',v:filtFTE.toFixed(2),s:full(filtHrs)+' hrs saved',c:'var(--g)'},
-    {l:'Annualised Run Rate',v:D.mCostAnn>0?aud(D.mCostAnn):'—',s:'Based on monthly avg',c:'var(--b)'},
-    {l:'Days Saved',v:full(filtHrs/A.hrsPerDay),s:(filtHrs/A.fteHrsPerYear).toFixed(2)+' FTE × year',c:'var(--accent)'},
+    {l:'Projected Annual Cost',v:D.mCostAnn>0?aud(D.mCostAnn):'—',s:(D.mActive&&D.mActive.length<=1?'⚠ Based on 1 month only — may be overstated':'Based on avg of '+((D.mActive&&D.mActive.length)||0)+' months'),c:'var(--b)'},
+    {l:'Working Days Saved',v:full(filtHrs/A.hrsPerDay),s:full(filtHrs)+' hrs ÷ '+A.hrsPerDay+' hrs/day',c:'var(--accent)'},
   ].map(k=>`<div class="stat-card" style="--accent-col:${k.c}"><div class="stat-label">${k.l}</div><div class="stat-value">${k.v}</div><div class="stat-sub">${k.s}</div></div>`).join('');
   if(view==='summary'){
     let cH=0,cC=0;
@@ -1210,7 +1235,7 @@ function renderSettings(D){
   const A=STATE.assumptions;
   $('assumptions-form').innerHTML=[
     {key:'fteHrsPerYear',label:'FTE Hours per Year',sub:'Standard FTE definition',unit:'hrs'},
-    {key:'hrsPerDay',label:'Working Hours per Day',sub:'Used for days-saved calc',unit:'hrs'},
+    {key:'hrsPerDay',label:'Working Hours per Day',sub:'Divides hours saved → working days (AUS standard: 7.6)',unit:'hrs'},
     {key:'avgSalaryAUD',label:'Avg FTE Salary',sub:'Confirm with Finance',unit:'AUD'},
     {key:'overheadMult',label:'Overhead Multiplier',sub:'Super, space, IT on-costs',unit:'×'},
   ].map(f=>`<div class="form-row"><label class="form-label">${f.label}<small>${f.sub}</small></label><input class="form-input" type="number" value="${A[f.key]||0}" data-key="${f.key}" oninput="updateAssumption(this)"/><span class="form-unit">${f.unit}</span></div>`).join('')+`<div class="form-row" style="background:var(--s2);border-radius:6px;padding:8px 10px;margin-top:6px"><label class="form-label">Processes in Production<small>Auto-calculated</small></label><span style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent)">${STATE.raw?STATE.raw.queues.filter(q=>q.completed>0).length:0}</span></div>`;
@@ -1219,13 +1244,21 @@ function renderSettings(D){
   $('file-structure').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><div style="font-size:10px;color:var(--w2);margin-bottom:8px">Monthly Sheets (${raw.monthlySheets.length})</div>${raw.monthlySheets.map(s=>`<div class="metric-row"><div class="metric-key">${s}</div><div style="font-size:10px;color:var(--w3);font-family:var(--mono)">${monthlyLabel(s)}</div></div>`).join('')}</div><div><div style="font-size:10px;color:var(--w2);margin-bottom:8px">Quarterly Sheets (${raw.quarterlySheets.length})</div>${raw.quarterlySheets.map(s=>`<div class="metric-row"><div class="metric-key" style="font-size:10px">${s}</div><div style="font-size:10px;color:var(--w3);font-family:var(--mono)">${quarterlyLabel(s)}</div></div>`).join('')}</div></div><div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)"><div style="font-size:10px;color:var(--w2);margin-bottom:4px">All Sheets Detected</div><div style="font-size:10px;color:var(--w3);font-family:var(--mono)">${raw.allSheets.join(' · ')}</div></div>`;
 }
 function renderCalcOutputs(D){
+  const A=STATE.assumptions;
+  const nMo=D.mActive?D.mActive.length:0;
+  const pLbl=nMo===0?'Period':nMo===1?D.mActive[0].period:nMo<=11?(nMo+'-month period'):'Full Year (YTD)';
+  const projWarn=nMo===1?' ⚠ 1 month only':nMo<3?' ⚠ '+nMo+' months avg':' (projected)';
   $('calc-outputs').innerHTML=[
-    ['Monthly Hours Saved',full(D.mHrs)+' hrs'],['Monthly Days Saved',full(D.mDays)+' days'],
-    ['Monthly FTE Equivalent',D.mFTE.toFixed(2)+' FTEs'],['Monthly FTE (Annualised)',D.mFTEann.toFixed(2)+' FTEs'],
-    ['Monthly Cost Avoidance',aud(D.mCost)],['Monthly Cost (Annualised)',aud(D.mCostAnn)],
-    ['Quarterly Hours Saved',full(D.qHrs)+' hrs'],['Quarterly FTE Equiv.',D.qFTE.toFixed(2)+' FTEs'],
+    [pLbl+' Hours Saved',full(D.mHrs)+' hrs'],
+    [pLbl+' Working Days Saved',full(D.mDays)+' days  (÷ '+A.hrsPerDay+' hrs/day)'],
+    [pLbl+' FTE Equivalent',D.mFTE.toFixed(2)+' FTEs'],
+    ['FTE Run Rate'+projWarn,D.mFTEann.toFixed(2)+' FTEs/yr'],
+    [pLbl+' Cost Avoidance',aud(D.mCost)],
+    ['Cost Run Rate'+projWarn,aud(D.mCostAnn)],
+    ['Quarterly Hours Saved',full(D.qHrs)+' hrs'],
+    ['Quarterly FTE Equiv.',D.qFTE.toFixed(2)+' FTEs'],
     ['Quarterly Cost Avoidance',aud(D.qCost)]
-  ].map(([k,v])=>`<div class="metric-row"><div class="metric-key">${k}</div><div class="metric-val">${v}</div></div>`).join('');
+  ].map(([k,v])=>`<div class="metric-row"><div class="metric-key" style="color:${k.includes('⚠')?'var(--y)':'var(--w2)'}">${k}</div><div class="metric-val">${v}</div></div>`).join('');
 }
 function updateAssumption(input){
   STATE.assumptions[input.dataset.key]=parseFloat(input.value)||0;
@@ -1318,7 +1351,8 @@ async function handleFile(file,statusEl){
     const buf=await file.arrayBuffer(),raw=parseWorkbook(buf);
     if(!raw.monthlySheets.length&&!raw.quarterlySheets.length)throw new Error('No recognised sheet names found.');
     STATE.raw=raw;STATE._wb=raw._wb;STATE.filename=file.name;STATE.excMonthFilter=null;STATE.excDrillOpen=null;
-    const D=derive(raw,STATE.assumptions);
+    STATE.globalFilters={fromMonth:'',toMonth:'',depts:[],queues:[]};
+    const D=deriveFiltered();
     $('upload-screen').style.display='none';$('app').style.display='flex';
     $('topbar-filename').textContent=file.name.length>20?file.name.slice(0,19)+'…':file.name;
     if(statusEl){statusEl.className='success';statusEl.textContent=`✓ ${raw.monthlySheets.length} monthly, ${raw.quarterlySheets.length} quarterly, ${D.qqc.length} queues`}
@@ -1343,7 +1377,7 @@ function copySummary(){if(!latestD)return;const D=latestD,A=STATE.assumptions;na
 function exportCSV(){if(!latestD)return;const D=latestD,A=STATE.assumptions;const rows=[['Period','Completed','Biz Exc','Sys Exc','Total','Success Rate','Exc Rate','Hrs Saved','Days Saved','FTE','Cost AUD'],...D.mc.filter(r=>r.total>0).map(r=>{const fte=r.hrsSaved/A.fteHrsPerYear,cost=fte*A.avgSalaryAUD*A.overheadMult;return[r.period,r.completed,r.bizEx,r.sysEx,r.total,(r.sr*100).toFixed(2)+'%',(r.er*100).toFixed(2)+'%',Math.round(r.hrsSaved),Math.round(r.hrsSaved/A.hrsPerDay),fte.toFixed(4),Math.round(cost)]})];const blob=new Blob([rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n')],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='BP_Export.csv';a.click();showToast('↓ CSV exported','success')}
 
 // ── SHAREPOINT ──
-const SP={isConfigured(){return SP_FILE_URL&&SP_FILE_URL!=='YOUR_SHAREPOINT_EXCEL_URL'},async load(isRefresh=false){const btn=$('sp-connect-btn');try{if(btn){btn.disabled=true;btn.textContent='Loading…'}setSpStatus('loading',isRefresh?'Fetching…':'Connecting…');await loadXLSX();const resp=await fetch(SP_FILE_URL,{credentials:'include'});if(!resp.ok)throw new Error(resp.status===401||resp.status===403?'Not signed in to M365':'HTTP '+resp.status);const buf=await resp.arrayBuffer();setSpStatus('loading','Parsing…');const raw=parseWorkbook(buf);if(!raw.monthlySheets.length&&!raw.quarterlySheets.length)throw new Error('No recognised sheets.');STATE.raw=raw;STATE._wb=raw._wb;STATE.filename='SharePoint (live)';const D=derive(raw,STATE.assumptions);if(!isRefresh){$('upload-screen').style.display='none';$('app').style.display='flex'}$('topbar-filename').textContent='SharePoint (live)';setLiveStatus('active','SharePoint · live');updateLiveBtn(true);const rb=$('live-refresh-btn');if(rb){rb.style.display='inline-block';rb.onclick=()=>SP.load(true)}renderAll(D);setSpStatus('success','✓ Connected');if(btn){btn.disabled=false;btn.textContent='↻ Refresh'}}catch(err){if(btn){btn.disabled=false;btn.textContent='⚡ Retry'}setSpStatus('error','⚠ '+err.message)}}};
+const SP={isConfigured(){return SP_FILE_URL&&SP_FILE_URL!=='YOUR_SHAREPOINT_EXCEL_URL'},async load(isRefresh=false){const btn=$('sp-connect-btn');try{if(btn){btn.disabled=true;btn.textContent='Loading…'}setSpStatus('loading',isRefresh?'Fetching…':'Connecting…');await loadXLSX();const resp=await fetch(SP_FILE_URL,{credentials:'include'});if(!resp.ok)throw new Error(resp.status===401||resp.status===403?'Not signed in to M365':'HTTP '+resp.status);const buf=await resp.arrayBuffer();setSpStatus('loading','Parsing…');const raw=parseWorkbook(buf);if(!raw.monthlySheets.length&&!raw.quarterlySheets.length)throw new Error('No recognised sheets.');STATE.raw=raw;STATE._wb=raw._wb;STATE.filename='SharePoint (live)';STATE.globalFilters={fromMonth:'',toMonth:'',depts:[],queues:[]};const D=deriveFiltered();if(!isRefresh){$('upload-screen').style.display='none';$('app').style.display='flex'}$('topbar-filename').textContent='SharePoint (live)';setLiveStatus('active','SharePoint · live');updateLiveBtn(true);const rb=$('live-refresh-btn');if(rb){rb.style.display='inline-block';rb.onclick=()=>SP.load(true)}renderAll(D);setSpStatus('success','✓ Connected');if(btn){btn.disabled=false;btn.textContent='↻ Refresh'}}catch(err){if(btn){btn.disabled=false;btn.textContent='⚡ Retry'}setSpStatus('error','⚠ '+err.message)}}};
 function setSpStatus(type,text){const el=$('sp-status');if(!el)return;const c={loading:'var(--accent)',error:'var(--r)',success:'var(--g)'};el.style.color=c[type]||'var(--w3)';el.textContent=text}
 
 setInterval(()=>{$('clock').textContent=new Date().toLocaleTimeString('en-AU')},1000);
