@@ -50,7 +50,9 @@ html,body{height:100%;background:var(--bg);color:var(--w);font-family:var(--sans
 #app{display:none;flex-direction:column;height:100vh;overflow:hidden}
 
 /* TOPBAR */
-#topbar{display:flex;align-items:center;padding:0 20px;height:52px;flex-shrink:0;background:var(--s1);border-bottom:1px solid var(--border);position:relative;z-index:50}
+#topbar{display:flex;align-items:center;padding:0 20px;height:52px;min-height:40px;max-height:88px;flex-shrink:0;background:var(--s1);border-bottom:1px solid var(--border);position:relative;z-index:50}
+#topbar-resizer{position:absolute;bottom:-3px;left:0;right:0;height:6px;cursor:row-resize;z-index:60;background:transparent;transition:background .2s}
+#topbar-resizer:hover,#topbar-resizer.active{background:var(--accent)50}
 .brand{display:flex;align-items:center;gap:10px;margin-right:24px;flex-shrink:0}
 .brand-badge{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;color:#fff;font-family:var(--mono)}
 .brand-name{font-size:13px;font-weight:700;color:var(--w)}
@@ -77,16 +79,32 @@ nav::-webkit-scrollbar{height:0}
 #body{display:flex;flex:1;overflow:hidden}
 
 /* SIDEBAR */
-#sidebar{width:240px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;padding:16px 0}
+#sidebar{width:240px;min-width:160px;max-width:520px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;padding:16px 0;position:relative}
+#sidebar-resizer{position:absolute;top:0;right:-3px;width:6px;height:100%;cursor:col-resize;z-index:20;background:transparent;transition:background .2s}
+#sidebar-resizer:hover,#sidebar-resizer.active{background:var(--accent)60}
 /* GLOBAL FILTERS */
 .filter-select{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:6px;color:var(--w2);font-family:var(--mono);font-size:11px;padding:5px 8px;outline:none;transition:border-color .2s;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238892a4' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 7px center;padding-right:22px}
 .filter-select:focus{border-color:var(--accent)}
 .filter-select option{background:var(--s2);color:var(--w)}
-.filter-multiselect{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:6px;color:var(--w2);font-family:var(--mono);font-size:11px;padding:4px 2px;outline:none;transition:border-color .2s;min-height:60px;max-height:130px}
-.filter-multiselect:focus{border-color:var(--accent)}
-.filter-multiselect option{padding:4px 8px;border-radius:3px;cursor:pointer}
-.filter-multiselect option:checked{background:var(--ba);color:var(--accent)}
-.filter-multiselect option:hover{background:var(--s3)}
+/* custom checkbox filter */
+.cf-box{padding:0 16px;display:flex;flex-direction:column;gap:6px}
+.cf-search{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:6px;color:var(--w);font-family:var(--mono);font-size:11px;padding:6px 10px;outline:none;transition:border-color .2s;box-sizing:border-box}
+.cf-search:focus{border-color:var(--accent)}
+.cf-search::placeholder{color:var(--w3)}
+.cf-btns{display:flex;gap:5px}
+.cf-btn{flex:1;background:transparent;border:1px solid var(--border2);border-radius:5px;color:var(--w3);font-family:var(--mono);font-size:9px;font-weight:600;padding:4px 2px;cursor:pointer;transition:all .15s;text-align:center;letter-spacing:.04em}
+.cf-btn:hover{border-color:var(--accent);color:var(--accent)}
+.cf-list{max-height:180px;overflow-y:auto;background:var(--s2);border:1px solid var(--border2);border-radius:6px}
+.cf-item{display:flex;align-items:center;gap:8px;padding:6px 9px;cursor:pointer;transition:background .1s;border-bottom:1px solid var(--border)}
+.cf-item:last-child{border-bottom:none}
+.cf-item:hover{background:var(--s3)}
+.cf-item.cf-on{background:var(--ba)}
+.cf-checkbox{width:13px;height:13px;accent-color:var(--accent);flex-shrink:0;cursor:pointer;pointer-events:none}
+.cf-label{font-size:11px;font-family:var(--mono);color:var(--w2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;line-height:1.3}
+.cf-item.cf-on .cf-label{color:var(--accent)}
+.cf-empty{padding:12px 10px;font-size:10px;color:var(--w3);font-family:var(--mono);text-align:center;font-style:italic}
+/* keep hidden native selects for deriveFiltered compat */
+.filter-multiselect{display:none}
 .range-row{display:flex;gap:6px;align-items:center}
 .range-row .filter-select{flex:1}
 .range-sep{font-size:9px;color:var(--w3);font-family:var(--mono);flex-shrink:0}
@@ -260,6 +278,7 @@ canvas{display:block;width:100%!important}
 
 <div id="app">
   <div id="topbar">
+    <div id="topbar-resizer" title="Drag to resize topbar"></div>
     <div class="brand">
       <div class="brand-badge">BP</div>
       <div><div class="brand-name">Blue Prism</div><div class="brand-sub">DIGIOPS INTELLIGENCE</div></div>
@@ -301,6 +320,7 @@ canvas{display:block;width:100%!important}
 
   <div id="body">
     <div id="sidebar">
+      <div id="sidebar-resizer" title="Drag to resize"></div>
       <div class="sidebar-section">
         <div class="sidebar-label">Navigation</div>
         <div class="sidebar-item active" data-panel="overview"><span class="sidebar-item-icon">◈</span>Overview</div>
@@ -328,6 +348,7 @@ canvas{display:block;width:100%!important}
               <span class="range-sep">→</span>
               <select class="filter-select" id="to-month" onchange="applyGlobalFilters()" title="To month"></select>
             </div>
+            <div id="date-empty-info" style="display:none;font-size:9px;color:var(--w3);font-family:var(--mono);font-style:italic"></div>
           </div>
         </div>
 
@@ -338,10 +359,16 @@ canvas{display:block;width:100%!important}
             Department
             <span id="dept-filter-badge" class="filter-active-badge" style="display:none">●</span>
           </div>
-          <div style="padding:0 16px">
-            <select class="filter-multiselect" id="dept-filter" multiple onchange="applyGlobalFilters()"></select>
-            <div class="filter-count-badge" id="dept-filter-count"></div>
+          <div class="cf-box">
+            <input class="cf-search" id="dept-cf-search" placeholder="Search…" oninput="cfSearch('dept')">
+            <div class="cf-btns">
+              <button class="cf-btn" onclick="cfSelectAll('dept')">All</button>
+              <button class="cf-btn" onclick="cfClear('dept')">None</button>
+            </div>
+            <div class="cf-list" id="dept-cf-list"></div>
+            <div class="filter-count-badge" id="dept-filter-count">All departments</div>
           </div>
+          <select class="filter-multiselect" id="dept-filter" multiple></select>
         </div>
 
         <div class="sidebar-divider"></div>
@@ -351,10 +378,16 @@ canvas{display:block;width:100%!important}
             Process / Queue
             <span id="queue-filter-badge" class="filter-active-badge" style="display:none">●</span>
           </div>
-          <div style="padding:0 16px">
-            <select class="filter-multiselect" id="queue-filter" multiple onchange="applyGlobalFilters()" style="max-height:110px"></select>
-            <div class="filter-count-badge" id="queue-filter-count"></div>
+          <div class="cf-box">
+            <input class="cf-search" id="queue-cf-search" placeholder="Search queues…" oninput="cfSearch('queue')">
+            <div class="cf-btns">
+              <button class="cf-btn" onclick="cfSelectAll('queue')">All</button>
+              <button class="cf-btn" onclick="cfClear('queue')">None</button>
+            </div>
+            <div class="cf-list" id="queue-cf-list"></div>
+            <div class="filter-count-badge" id="queue-filter-count">All queues</div>
           </div>
+          <select class="filter-multiselect" id="queue-filter" multiple></select>
         </div>
 
         <div class="sidebar-divider"></div>
@@ -372,7 +405,7 @@ canvas{display:block;width:100%!important}
             <div id="fte-latest-val" style="font-size:24px;font-weight:700;font-family:var(--mono);color:var(--accent);line-height:1">—</div>
             <div id="fte-latest-sub" style="font-size:10px;color:var(--w3);margin-top:2px">FTE equivalent</div>
           </div>
-          <div class="fte-metric"><span class="fte-metric-key">YTD Total</span><span class="fte-metric-val" id="fte-ytd-val">—</span></div>
+          <div class="fte-metric"><span class="fte-metric-key" id="fte-ytd-key">YTD Total</span><span class="fte-metric-val" id="fte-ytd-val">—</span></div>
           <div class="fte-metric"><span class="fte-metric-key" id="fte-ann-key" title="Projected annual run rate based on average monthly hours saved. May be misleading when only 1 month is selected.">Proj. Run Rate</span><span class="fte-metric-val" id="fte-ann-val">—</span></div>
           <div class="fte-metric"><span class="fte-metric-key">YTD Hrs</span><span class="fte-metric-val" id="fte-hrs-val">—</span></div>
           <div class="fte-metric"><span class="fte-metric-key">YTD Cost</span><span class="fte-metric-val" id="fte-cost-val" style="color:var(--g)">—</span></div>
@@ -398,6 +431,7 @@ canvas{display:block;width:100%!important}
           <div class="card"><div class="card-head"><div class="sec-header"><div class="sec-bar" style="background:var(--g)"></div><span class="sec-title">Financial Summary</span><div class="sec-line"></div></div></div><div class="card-pad" id="financial-summary"></div></div>
           <div class="card"><div class="card-head"><div class="sec-header"><div class="sec-bar" style="background:var(--r)"></div><span class="sec-title">Top Exception Hotspots</span><div class="sec-line"></div></div></div><div class="card-pad" id="overview-hotspots"></div></div>
         </div>
+        <div class="card" id="queue-breakdown-card" style="display:none;margin-bottom:14px"><div class="card-head"><div class="sec-header"><div class="sec-bar" style="background:var(--accent)"></div><span class="sec-title" id="queue-breakdown-title">Queue Breakdown</span><div class="sec-line"></div></div></div><div class="tbl-wrap"><table><thead><tr><th>Queue</th><th>Period</th><th class="td-r">Completed</th><th class="td-r">Biz Exc</th><th class="td-r">Sys Exc</th><th class="td-r">Total</th><th class="td-r">Exc Rate</th><th class="td-r">Hrs Saved</th><th class="td-c">Risk</th></tr></thead><tbody id="queue-breakdown-body"></tbody></table></div></div>
         <div class="card"><div class="card-head"><div class="sec-header"><div class="sec-bar"></div><span class="sec-title">Programme Health · RAG Status</span><div class="sec-line"></div></div></div><div class="tbl-wrap"><table><thead><tr><th>Metric</th><th>Value</th><th>Status</th><th>Threshold</th></tr></thead><tbody id="rag-body"></tbody></table></div></div>
       </div>
 
@@ -685,72 +719,106 @@ function ragLabel(r,w=.05,c=.15){return r>=c?'🔴 CRITICAL':r>=w?'🟡 MONITOR'
 function ragColor(r,w=.05,c=.15){return r>=c?'var(--r)':r>=w?'var(--y)':'var(--g)'}
 
 // ── GLOBAL FILTERS ──
-function populateGlobalFilters(raw){
-  // Show the filter section
-  const sec=$('global-filters-section');if(sec)sec.style.display='block';
+// ── CUSTOM FILTER STATE ──
+// CF_STATE holds selections independently of DOM — this fixes the intermittent
+// "doesn't update" bug caused by reading selectedOptions from hidden native selects.
+const CF_STATE={dept:{items:[],sel:new Set()},queue:{items:[],sel:new Set()}};
 
-  // Date range — all monthly sheets sorted
+function cfRender(type){
+  const list=$(type+'-cf-list'); if(!list)return;
+  const q=($(type+'-cf-search')||{value:''}).value.trim().toLowerCase();
+  const visible=CF_STATE[type].items.filter(i=>!q||i.toLowerCase().includes(q));
+  if(!visible.length){list.innerHTML='<div class="cf-empty">No matches</div>';return;}
+  list.innerHTML=visible.map(item=>{
+    const on=CF_STATE[type].sel.has(item);
+    const esc=item.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    return `<div class="cf-item${on?' cf-on':''}" onclick="cfToggle('${type}','${esc}')"><input type="checkbox" class="cf-checkbox"${on?' checked':''}><span class="cf-label" title="${esc}">${item}</span></div>`;
+  }).join('');
+}
+
+function cfToggle(type,value){
+  if(CF_STATE[type].sel.has(value))CF_STATE[type].sel.delete(value);
+  else CF_STATE[type].sel.add(value);
+  cfRender(type);
+  applyGlobalFilters();
+}
+
+function cfSearch(type){cfRender(type);}
+
+function cfSelectAll(type){
+  const q=($(type+'-cf-search')||{value:''}).value.trim().toLowerCase();
+  CF_STATE[type].items.filter(i=>!q||i.toLowerCase().includes(q)).forEach(i=>CF_STATE[type].sel.add(i));
+  cfRender(type); applyGlobalFilters();
+}
+
+function cfClear(type){
+  const q=($(type+'-cf-search')||{value:''}).value.trim().toLowerCase();
+  CF_STATE[type].items.filter(i=>!q||i.toLowerCase().includes(q)).forEach(i=>CF_STATE[type].sel.delete(i));
+  cfRender(type); applyGlobalFilters();
+}
+
+function populateGlobalFilters(raw){
+  const sec=$('global-filters-section'); if(sec)sec.style.display='block';
+  // Date range — only months WITH data shown; empty months excluded
   const ms=raw.monthlySheets;
+  const mwd=raw.monthsWithData||ms; // months that actually have values
   const fromSel=$('from-month'),toSel=$('to-month');
   if(fromSel&&toSel){
-    const opts=ms.map(s=>`<option value="${s}">${monthlyLabel(s)}</option>`).join('');
-    fromSel.innerHTML=opts;toSel.innerHTML=opts;
-    if(ms.length){fromSel.value=ms[0];toSel.value=ms[ms.length-1]}
+    // Use monthsWithData for selectable range; show count of excluded empty months
+    const opts=mwd.map(s=>`<option value="${s}">${monthlyLabel(s)}</option>`).join('');
+    fromSel.innerHTML=opts; toSel.innerHTML=opts;
+    if(mwd.length){fromSel.value=mwd[0]; toSel.value=mwd[mwd.length-1];}
+    // Show info if some months were excluded
+    const emptyCount=ms.length-mwd.length;
+    const emptyInfo=$('date-empty-info');
+    if(emptyInfo)emptyInfo.style.display=emptyCount>0?'block':'none';
+    if(emptyInfo&&emptyCount>0)emptyInfo.textContent=emptyCount+' empty month'+(emptyCount>1?'s':'')+' hidden';
   }
-
-  // Departments — derived from all queue rows across all sheets
-  const allDepts=[...new Set(Object.values(raw.queueHistory||{}).flatMap(hist=>hist.map(h=>h.dept||'Unassigned')).concat(raw.queues.map(q=>q.dept||'Unassigned')))].filter(Boolean).sort();
-  const deptSel=$('dept-filter');
-  if(deptSel)deptSel.innerHTML=allDepts.map(d=>`<option value="${d}">${d}</option>`).join('');
-
-  // Queues — all known queue names
+  // Departments
+  const allDepts=[...new Set(Object.values(raw.queueHistory||{}).flatMap(h=>h.map(r=>r.dept||'Unassigned')).concat(raw.queues.map(q=>q.dept||'Unassigned')))].filter(Boolean).sort();
+  CF_STATE.dept.items=allDepts;
+  CF_STATE.dept.sel=new Set(STATE.globalFilters.depts||[]);
+  cfRender('dept');
+  // Queues
   const allQueues=[...new Set([...Object.keys(raw.queueHistory||{}),...raw.queues.map(q=>q.name)])].sort();
-  const queueSel=$('queue-filter');
-  if(queueSel)queueSel.innerHTML=allQueues.map(q=>`<option value="${q}">${q}</option>`).join('');
-
+  CF_STATE.queue.items=allQueues;
+  CF_STATE.queue.sel=new Set(STATE.globalFilters.queues||[]);
+  cfRender('queue');
   updateFilterBadges();
 }
 
 function getGlobalFilters(){
   const GF=STATE.globalFilters;
   const fromSel=$('from-month'),toSel=$('to-month');
-  const deptSel=$('dept-filter'),queueSel=$('queue-filter');
   GF.fromMonth=fromSel?fromSel.value:null;
   GF.toMonth=toSel?toSel.value:null;
-  GF.depts=deptSel?[...deptSel.selectedOptions].map(o=>o.value):[];
-  GF.queues=queueSel?[...queueSel.selectedOptions].map(o=>o.value):[];
+  // Read from CF_STATE directly — never from DOM selectedOptions
+  GF.depts=[...CF_STATE.dept.sel];
+  GF.queues=[...CF_STATE.queue.sel];
   return GF;
 }
 
 function updateFilterBadges(){
   const GF=getGlobalFilters();
   const ms=STATE.raw?STATE.raw.monthlySheets:[];
-  // Use numeric keys so cross-year ranges (e.g. JUL25→JAN26) are detected correctly
-  const dateActive=ms.length&&(
-    (GF.fromMonth&&sheetKey(GF.fromMonth)!==sheetKey(ms[0]))||
-    (GF.toMonth&&sheetKey(GF.toMonth)!==sheetKey(ms[ms.length-1]))
-  );
+  const dateActive=ms.length&&((GF.fromMonth&&sheetKey(GF.fromMonth)!==sheetKey(ms[0]))||(GF.toMonth&&sheetKey(GF.toMonth)!==sheetKey(ms[ms.length-1])));
   const deptActive=GF.depts.length>0,queueActive=GF.queues.length>0;
   const db=$('date-filter-badge'),deb=$('dept-filter-badge'),qb=$('queue-filter-badge');
   if(db)db.style.display=dateActive?'inline-flex':'none';
   if(deb)deb.style.display=deptActive?'inline-flex':'none';
   if(qb)qb.style.display=queueActive?'inline-flex':'none';
   const dc=$('dept-filter-count'),qc=$('queue-filter-count');
-  if(dc)dc.textContent=deptActive?`${GF.depts.length} selected`:'All departments';
-  if(qc)qc.textContent=queueActive?`${GF.queues.length} selected`:'All queues';
-  // Topbar indicator
+  if(dc)dc.textContent=deptActive?GF.depts.length+' selected':'All departments';
+  if(qc)qc.textContent=queueActive?GF.queues.length+' selected':'All queues';
   const tb=$('filter-active-topbar'),tc=$('filter-active-count');
   const anyActive=dateActive||deptActive||queueActive;
   if(tb)tb.style.display=anyActive?'flex':'none';
-  if(tc){const parts=[];if(dateActive)parts.push('date');if(deptActive)parts.push(`${GF.depts.length} dept`);if(queueActive)parts.push(`${GF.queues.length} queue`);tc.textContent='('+parts.join(', ')+')'}
+  if(tc){const parts=[];if(dateActive)parts.push('date');if(deptActive)parts.push(GF.depts.length+' dept');if(queueActive)parts.push(GF.queues.length+' queue');tc.textContent='('+parts.join(', ')+')';}
 }
 
 function applyGlobalFilters(){
-  // Prevent "To" being set earlier than "From"
   const fromSel=$('from-month'),toSel=$('to-month');
-  if(fromSel&&toSel&&sheetKey(toSel.value)<sheetKey(fromSel.value)){
-    toSel.value=fromSel.value;
-  }
+  if(fromSel&&toSel&&fromSel.value&&toSel.value&&sheetKey(toSel.value)<sheetKey(fromSel.value)){toSel.value=fromSel.value;}
   updateFilterBadges();
   if(!STATE.raw)return;
   const D=deriveFiltered();
@@ -770,9 +838,10 @@ function resetGlobalFilters(){
   const fromSel=$('from-month'),toSel=$('to-month');
   if(fromSel&&ms.length)fromSel.value=ms[0];
   if(toSel&&ms.length)toSel.value=ms[ms.length-1];
-  const deptSel=$('dept-filter'),queueSel=$('queue-filter');
-  if(deptSel)[...deptSel.options].forEach(o=>o.selected=false);
-  if(queueSel)[...queueSel.options].forEach(o=>o.selected=false);
+  CF_STATE.dept.sel.clear(); CF_STATE.queue.sel.clear();
+  const ds=$('dept-cf-search'),qs=$('queue-cf-search');
+  if(ds)ds.value=''; if(qs)qs.value='';
+  cfRender('dept'); cfRender('queue');
   applyGlobalFilters();
   showToast('Filters reset','info');
 }
@@ -865,7 +934,7 @@ function parseWorkbook(buf){
   const wb=XLSX.read(buf,{type:'array'}),sheets=wb.SheetNames;
   const ms=sheets.filter(isMonthlySheet).sort(monthlySort);
   const qs=sheets.filter(isQuarterlySheet).sort(quarterlySort);
-  const monthly=ms.map(n=>{const row=getTotalsRow(wb.Sheets[n]);return{sheetName:n,period:monthlyLabel(n),completed:row?(row[1]||0):0,bizEx:row?(row[2]||0):0,sysEx:row?(row[3]||0):0,hrsSaved:row?(row[6]||0):0}});
+  const monthly=ms.map(n=>{const row=getTotalsRow(wb.Sheets[n]);const c=row?(row[1]||0):0,b=row?(row[2]||0):0,s2=row?(row[3]||0):0,h=row?(row[6]||0):0;return{sheetName:n,period:monthlyLabel(n),completed:c,bizEx:b,sysEx:s2,hrsSaved:h,hasData:(c+b+s2+h)>0};});
   const quarterly=qs.map(n=>{const row=getTotalsRow(wb.Sheets[n]);return{sheetName:n,period:quarterlyLabel(n),completed:row?(row[1]||0):0,bizEx:row?(row[2]||0):0,sysEx:row?(row[3]||0):0,hrsSaved:row?(row[6]||0):0}});
   const recentSheet=[...ms].reverse().find(n=>{const row=getTotalsRow(wb.Sheets[n]);return row&&(row[1]||0)>0});
   const queues=recentSheet?getQueueRows(wb.Sheets[recentSheet]):[];
@@ -879,10 +948,12 @@ function parseWorkbook(buf){
       const c=r[1]||0,b=r[2]||0,s2=r[3]||0,tot=c+b+s2;
       const dR=r[9],dept=(dR&&dR!==0&&String(dR).trim()&&String(dR)!=='nan')?String(dR).trim():'Unassigned';
       if(!queueHistory[qname])queueHistory[qname]=[];
-      queueHistory[qname].push({period:monthlyLabel(n),sheetName:n,completed:c,bizEx:b,sysEx:s2,total:tot,dept,er:tot>0?(b+s2)/tot:0});
+      const hSaved=r[6]||0;
+      queueHistory[qname].push({period:monthlyLabel(n),sheetName:n,completed:c,bizEx:b,sysEx:s2,total:tot,dept,er:tot>0?(b+s2)/tot:0,hrsSaved:hSaved});
     }
   });
-  return{monthly,quarterly,queues,queueHistory,queueSourceSheet:recentSheet,monthlySheets:ms,quarterlySheets:qs,allSheets:sheets,_wb:wb};
+  const monthsWithData=ms.filter(n=>monthly.find(m=>m.sheetName===n&&m.hasData));
+  return{monthly,quarterly,queues,queueHistory,queueSourceSheet:recentSheet,monthlySheets:ms,monthsWithData,quarterlySheets:qs,allSheets:sheets,_wb:wb};
 }
 
 // ── DERIVE ──
@@ -1036,18 +1107,27 @@ function renderAll(D){
 function renderFTEWidget(D){
   if(!D||!D.mTot){$('sidebar-fte-section').style.display='none';return}
   $('sidebar-fte-section').style.display='block';
-  const A=STATE.assumptions;
-  $('fte-latest-val').textContent=(D.latestFTE||0).toFixed(2);
-  $('fte-latest-sub').textContent=D.latest?`FTE · ${D.latest.period}`:'FTE equivalent';
+  const nMo=D.mActive?D.mActive.length:0;
+  const GF=STATE.globalFilters;
+  const isFiltered=GF.depts.length||GF.queues.length;
+  // Large top figure: period total FTE when filtered, otherwise latest-month FTE
+  const topVal=isFiltered?D.mFTE:(D.latestFTE||0);
+  const topLabel=isFiltered
+    ? (nMo===1?D.mActive[0].period+' FTE':'Period FTE')
+    : (D.latest?'FTE · '+D.latest.period:'FTE equivalent');
+  $('fte-latest-val').textContent=topVal.toFixed(2);
+  $('fte-latest-sub').textContent=topLabel;
+  // Period total row — label reflects filter scope
+  const pLbl=nMo===0?'Period':nMo===1?D.mActive[0].period:nMo<=11?(nMo+'-mo total'):'YTD Total';
+  const periodEl=$('fte-ytd-key');if(periodEl)periodEl.textContent=pLbl;
   $('fte-ytd-val').textContent=D.mFTE.toFixed(2)+' FTE';
-  const annMonths=D.mActive?D.mActive.length:0;
-  const annLabel=annMonths<=1?'⚠ Proj. ('+annMonths+'mo)':annMonths<6?'Proj. ('+annMonths+'mo avg)':'Proj. Run Rate';
+  // Run rate with warning based on month count
+  const annLabel=nMo<=1?'⚠ Proj. ('+(nMo||1)+'mo)':nMo<6?'Proj. ('+nMo+'mo avg)':'Proj. Run Rate';
   $('fte-ann-val').textContent=D.mFTEann.toFixed(2)+' FTE/yr';
   const annEl=$('fte-ann-key');if(annEl)annEl.textContent=annLabel;
   $('fte-hrs-val').textContent=full(D.mHrs)+' hrs';
   $('fte-cost-val').textContent=aud(D.mCost);
 }
-
 // ── OVERVIEW ──
 function renderOverview(D){
   const A=STATE.assumptions;
@@ -1079,6 +1159,50 @@ function renderOverview(D){
     D.latest?['Latest Month Exc. Rate ('+D.latest.period+')',pct(D.latest.er),D.latest.er,'<5%']:null,
     ...D.qqc.filter(q=>q.er>.10).slice(0,3).map(q=>[q.name,pct(q.er),q.er,'<10%']),
   ].filter(Boolean).map((r,i)=>`<tr style="background:${i%2?'transparent':'var(--s2)'}"><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r[0]}</td><td class="td-r" style="color:${ragColor(r[2])};font-weight:600">${r[1]}</td><td class="td-c"><span class="pill ${ragClass(r[2])}">${ragLabel(r[2])}</span></td><td style="color:var(--w3)">${r[3]}</td></tr>`).join('');
+  // ── QUEUE BREAKDOWN CARD — shown when queue filter is active ──
+  const GF=STATE.globalFilters;
+  const qbCard=$('queue-breakdown-card');
+  const qbBody=$('queue-breakdown-body');
+  const qbTitle=$('queue-breakdown-title');
+  const hasQueueFilter=GF.queues.length>0;
+  if(qbCard)qbCard.style.display=hasQueueFilter?'block':'none';
+  if(hasQueueFilter&&qbBody&&STATE.raw){
+    const nMo=D.mActive?D.mActive.length:0;
+    const pLbl2=nMo===0?'Period':nMo===1?D.mActive[0].period:nMo+'-month period';
+    if(qbTitle)qbTitle.textContent='Queue Breakdown · '+pLbl2+' ('+GF.queues.length+' selected)';
+    // Build per-queue aggregated stats across active monthly sheets
+    const qHistory=STATE.raw.queueHistory||{};
+    const fromKey=GF.fromMonth?sheetKey(GF.fromMonth):null;
+    const toKey=GF.toMonth?sheetKey(GF.toMonth):null;
+    qbBody.innerHTML=GF.queues.map((qname,ri)=>{
+      const hist=(qHistory[qname]||[]).filter(h=>{
+        if(!fromKey||!toKey)return true;
+        return sheetKey(h.sheetName)>=fromKey&&sheetKey(h.sheetName)<=toKey;
+      });
+      const totC=hist.reduce((s,h)=>s+h.completed,0);
+      const totB=hist.reduce((s,h)=>s+h.bizEx,0);
+      const totS=hist.reduce((s,h)=>s+h.sysEx,0);
+      const totT=totC+totB+totS;
+      const er=totT>0?(totB+totS)/totT:0;
+      // Hours from snapshot queues
+      const qSnap=D.qqc.find(q=>q.name===qname);
+      // For hrs across all filtered months use queueHistory hrsSaved if available
+      const totHrs=hist.reduce((s,h)=>s+(h.hrsSaved||0),0)||((qSnap&&qSnap.hrsSaved)||0);
+      const periodTxt=hist.length>0?(hist.length===1?hist[0].period:hist.length+' months'):'No data';
+      const bg=ri%2?'transparent':'var(--s2)';
+      return `<tr style="background:${bg}">`
+        +`<td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${qname}</td>`
+        +`<td style="color:var(--w3);font-family:var(--mono);font-size:11px">${periodTxt}</td>`
+        +`<td class="td-r" style="color:var(--g)">${totC.toLocaleString()}</td>`
+        +`<td class="td-r" style="color:${totB>0?'var(--y)':'var(--w3)'}">${totB.toLocaleString()}</td>`
+        +`<td class="td-r" style="color:${totS>0?'var(--r)':'var(--w3)'}">${totS.toLocaleString()}</td>`
+        +`<td class="td-r">${totT.toLocaleString()}</td>`
+        +`<td class="td-r" style="font-weight:700;color:${ragColor(er)}">${totT>0?pct(er):'—'}</td>`
+        +`<td class="td-r" style="color:var(--accent);font-family:var(--mono)">${totHrs>0?full(totHrs)+' hrs':'—'}</td>`
+        +`<td class="td-c">${totT>0?'<span class="pill '+ragClass(er)+'">'+ragLabel(er)+'</span>':'—'}</td>`
+        +'</tr>';
+    }).join('');
+  }
 }
 
 // ── MONTHLY / QUARTERLY ──
@@ -1382,6 +1506,60 @@ function setSpStatus(type,text){const el=$('sp-status');if(!el)return;const c={l
 
 setInterval(()=>{$('clock').textContent=new Date().toLocaleTimeString('en-AU')},1000);
 let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>drawActiveCharts(STATE.currentPanel),120)});
+
+// ── TOPBAR RESIZE (drag bottom edge to change height) ──
+(function(){
+  const topbar=document.getElementById('topbar');
+  const trz=document.getElementById('topbar-resizer');
+  if(!topbar||!trz)return;
+  let startY,startH;
+  trz.addEventListener('mousedown',e=>{
+    startY=e.clientY; startH=topbar.offsetHeight;
+    trz.classList.add('active');
+    document.body.style.cursor='row-resize';
+    document.body.style.userSelect='none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!trz.classList.contains('active'))return;
+    const newH=Math.min(88,Math.max(40,startH+(e.clientY-startY)));
+    topbar.style.height=newH+'px';
+  });
+  document.addEventListener('mouseup',()=>{
+    if(!trz.classList.contains('active'))return;
+    trz.classList.remove('active');
+    document.body.style.cursor='';
+    document.body.style.userSelect='';
+  });
+})();
+
+// ── SIDEBAR RESIZE (drag right edge) ──
+(function(){
+  const sidebar=document.getElementById('sidebar');
+  const resizer=document.getElementById('sidebar-resizer');
+  if(!sidebar||!resizer)return;
+  let startX,startW;
+  resizer.addEventListener('mousedown',e=>{
+    startX=e.clientX; startW=sidebar.offsetWidth;
+    resizer.classList.add('active');
+    document.body.style.cursor='col-resize';
+    document.body.style.userSelect='none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!resizer.classList.contains('active'))return;
+    const newW=Math.min(520,Math.max(160,startW+(e.clientX-startX)));
+    sidebar.style.width=newW+'px';
+  });
+  document.addEventListener('mouseup',()=>{
+    if(!resizer.classList.contains('active'))return;
+    resizer.classList.remove('active');
+    document.body.style.cursor='';
+    document.body.style.userSelect='';
+    clearTimeout(rz);rz=setTimeout(()=>drawActiveCharts(STATE.currentPanel),80);
+  });
+})();
+
 window.addEventListener('DOMContentLoaded',()=>{
   const inIframe=window.self!==window.top;
   if(inIframe){const ls=$('live-section');if(ls)ls.style.display='none';const tu=$('topbar-upload-btn');if(tu)tu.style.display='none';if(SP.isConfigured()){const tb=$('teams-refresh-btn');if(tb)tb.style.display='flex'}}
